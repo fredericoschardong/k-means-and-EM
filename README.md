@@ -9,7 +9,9 @@ And then:
 `./plot.sh`
 
 k-means result:
+
 ![k-means](https://github.com/fredericoschardong/k-means-and-EM/blob/master/k-means.png)
 
 EM result:
-![k-means](https://github.com/fredericoschardong/k-means-and-EM/blob/master/k-means.png)
+
+![k-means](https://github.com/fredericoschardong/k-means-and-EM/blob/master/em.png)
