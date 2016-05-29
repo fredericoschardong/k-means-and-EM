@@ -16,7 +16,9 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 #include <stdint.h>
 #include <float.h>
 
-float data[100][3] = {0};
+#define PI 3.14159265358979323846
+
+float data[100][4] = {0};
 
 float center_x1, center_y1, center_x2, center_y2;
 
@@ -66,28 +68,182 @@ void k_means(){
     old_center_y2 = center_y2;
 
     float total_center_x1 = 0, total_center_y1 = 0, total_center_x2 = 0, total_center_y2 = 0;
-    int total_k0 = 0, total_k1 = 0;
+    int total_k1 = 0, total_k2 = 0;
 
     for(i = 0; i < 100; i++){
       if(data[i][2]){
         total_center_x1 += data[i][0];
         total_center_y1 += data[i][1];
-        total_k0++;
+        total_k1++;
       }
       else{
         total_center_x2 += data[i][0];
         total_center_y2 += data[i][1];
-        total_k1++;
+        total_k2++;
       }
     }
     
-    center_x1 = total_center_x1 / total_k0;
-    center_y1 = total_center_y1 / total_k0;
-    center_x2 = total_center_x2 / total_k1;
-    center_y2 = total_center_y2 / total_k1;
+    center_x1 = total_center_x1 / total_k1;
+    center_y1 = total_center_y1 / total_k1;
+    center_x2 = total_center_x2 / total_k2;
+    center_y2 = total_center_y2 / total_k2;
 
     //printf("Changing center x1 from %f to %f\n", old_center_x1, center_x1);
   }while(old_center_x1 != center_x1 && old_center_y1 != center_y1 && old_center_x2 != center_x2 && old_center_y2 != center_y2);
+}
+
+//https://en.wikipedia.org/wiki/Multivariate_normal_distribution#Density_function
+float pdf_for_bivariate_distribution(float x, float x_standard_deviation, float x_mean, float y, float y_standard_deviation, float y_mean, float pearson_product){
+
+
+  return (1 / (2 * PI * x_standard_deviation * y_standard_deviation * sqrt(1 - pow(pearson_product, 2)))) *
+         expf(-(1 / (float)(2 * (1 - pow(pearson_product, 2)))) *
+              ((pow(x - x_mean, 2) / pow(x_standard_deviation, 2)) + (pow(y - y_mean, 2) / pow(y_standard_deviation, 2)) -
+               ((2 * pearson_product * (x - x_mean) * (y - y_mean))/(x_standard_deviation * y_standard_deviation))));
+}
+
+void em(){
+  int i;
+
+  float old_center_x1, old_center_y1, old_center_x2, old_center_y2;
+  float PI_k1 = 0, PI_k2 = 0;
+  float Pr_k1[100] = {0}, Pr_k2[100] = {0};
+
+  float total_center_x1 = 0, total_center_y1 = 0, total_center_x2 = 0, total_center_y2 = 0;
+  float standard_deviation_k1_x = 0, standard_deviation_k2_x = 0, standard_deviation_k1_y = 0, standard_deviation_k2_y = 0;
+
+  float covariance_k1 = 0, covariance_k2 = 0;
+  float pearson_k1 = 0, pearson_k2 = 0;
+
+  int total_k1 = 0, total_k2 = 0;
+
+  //generate things based on k-means
+  for(i = 0; i < 100; i++){
+    if(data[i][2]){
+      total_center_x1 += data[i][0];
+      total_center_y1 += data[i][1];
+      total_k1++;
+    }
+    else{
+      total_center_x2 += data[i][0];
+      total_center_y2 += data[i][1];
+      total_k2++;
+    }
+  }
+
+  center_x1 = total_center_x1 / total_k1;
+  center_y1 = total_center_y1 / total_k1;
+  center_x2 = total_center_x2 / total_k2;
+  center_y2 = total_center_y2 / total_k2;
+
+  //actually it is not standard deviation at this point
+  for(i = 0; i < 100; i++){
+    if(data[i][2]){
+      standard_deviation_k1_x += pow(data[i][0] - center_x1, 2);
+      standard_deviation_k1_y += pow(data[i][1] - center_y1, 2);
+      covariance_k1 += (data[i][0] - center_x1) * (data[i][1] - center_y1);
+    }
+    else{
+      standard_deviation_k2_x += pow(data[i][0] - center_x2, 2);
+      standard_deviation_k2_y += pow(data[i][1] - center_y2, 2);
+      covariance_k2 += (data[i][0] - center_x2) * (data[i][1] - center_y2);
+    }
+  }
+
+  //https://en.wikipedia.org/wiki/Covariance#Discrete_variables
+  covariance_k1 = covariance_k1 / total_k1;
+  covariance_k2 = covariance_k2 / total_k2;
+
+  standard_deviation_k1_x = sqrt(standard_deviation_k1_x / total_k1);
+  standard_deviation_k1_y = sqrt(standard_deviation_k1_y / total_k1);
+  standard_deviation_k2_x = sqrt(standard_deviation_k2_x / total_k2);
+  standard_deviation_k2_y = sqrt(standard_deviation_k2_y / total_k2);
+
+  //Pearson product https://en.wikipedia.org/wiki/Pearson_product-moment_correlation_coefficient#For_a_population
+  pearson_k1 = covariance_k1 / (standard_deviation_k1_x * standard_deviation_k1_y);
+  pearson_k2 = covariance_k2 / (standard_deviation_k2_x * standard_deviation_k2_y);
+
+  printf("pearson_k1 %f covariance_k1 %f standard_deviation_k1_x %f standard_deviation_k1_y %f\n", pearson_k1, covariance_k1, standard_deviation_k1_x, standard_deviation_k1_y);
+  printf("pearson_k2 %f covariance_k2 %f standard_deviation_k2_x %f standard_deviation_k2_y %f\n", pearson_k2, covariance_k2, standard_deviation_k2_x, standard_deviation_k2_y);
+
+  //PI_{k} is the probability of an element belong to group k
+  PI_k1 = total_k1 / (float)(total_k1 + total_k2);
+  PI_k2 = total_k2 / (float)(total_k1 + total_k2);
+
+  printf("PI_k1 %f PI_k2 %f, sum %f\n\n", PI_k1, PI_k2, PI_k1 + PI_k2);
+
+  do{
+    float N_k1 = 0, N_k2 = 0;
+
+    //Step E
+    for(i = 0; i < 100; i++){
+      Pr_k1[i] = pdf_for_bivariate_distribution(data[i][0], standard_deviation_k1_x, center_x1, data[i][1], standard_deviation_k1_y, center_y1, pearson_k1) * PI_k1;
+      Pr_k2[i] = pdf_for_bivariate_distribution(data[i][0], standard_deviation_k2_x, center_x2, data[i][1], standard_deviation_k2_y, center_y2, pearson_k2) * PI_k2;
+
+      float temp = Pr_k1[i];
+
+      Pr_k1[i] = Pr_k1[i] / (Pr_k1[i] + Pr_k2[i]);
+      Pr_k2[i] = Pr_k2[i] / (temp + Pr_k2[i]);
+
+      //printf("i %d, Pr_k1[i] %f pearson_k1 %f PI_k1 %f Pr_k2[i] %f pearson_k2 %f PI_k2 %f\n", i, Pr_k1[i], pearson_k1, PI_k1, Pr_k2[i], pearson_k2, PI_k2);
+
+      //calculate N_{k}
+      N_k1 += Pr_k1[i];
+      N_k2 += Pr_k2[i];
+    }
+
+    //Step M
+    //update mean
+    float cond_prob_k1_x = 0, cond_prob_k1_y = 0, cond_prob_k2_x = 0, cond_prob_k2_y = 0;
+
+    for(i = 0; i < 100; i++){
+      cond_prob_k1_x += Pr_k1[i] * data[i][0];
+      cond_prob_k1_y += Pr_k1[i] * data[i][1];
+      cond_prob_k2_x += Pr_k2[i] * data[i][0];
+      cond_prob_k2_y += Pr_k2[i] * data[i][1];
+    }
+
+    center_x1 = cond_prob_k1_x / N_k1;
+    center_y1 = cond_prob_k1_y / N_k1;
+    center_x2 = cond_prob_k2_x / N_k2;
+    center_y2 = cond_prob_k2_y / N_k2;
+
+    //update standard deviation, covariance and pearson_product
+    cond_prob_k1_x = cond_prob_k1_y = cond_prob_k2_x = cond_prob_k2_y = 0;
+    covariance_k1 = covariance_k2 = 0;
+
+    for(i = 0; i < 100; i++){
+      cond_prob_k1_x += Pr_k1[i] * pow(data[i][0] - center_x1, 2);
+      cond_prob_k1_y += Pr_k1[i] * pow(data[i][1] - center_y1, 2);
+      cond_prob_k2_x += Pr_k2[i] * pow(data[i][0] - center_x2, 2);
+      cond_prob_k2_y += Pr_k2[i] * pow(data[i][1] - center_y2, 2);
+
+      covariance_k1 += Pr_k1[i] * (data[i][0] - center_x1) * (data[i][1] - center_y1);
+      covariance_k2 += Pr_k2[i] * (data[i][0] - center_x2) * (data[i][1] - center_y2);
+    }
+
+    covariance_k1 = covariance_k1 / N_k1;
+    covariance_k2 = covariance_k2 / N_k2;
+
+    standard_deviation_k1_x = cond_prob_k1_x / N_k1;
+    standard_deviation_k1_y = cond_prob_k1_y / N_k1;
+    standard_deviation_k2_x = cond_prob_k2_x / N_k2;
+    standard_deviation_k2_y = cond_prob_k2_y / N_k2;
+
+    pearson_k1 = covariance_k1 / (standard_deviation_k1_x * standard_deviation_k1_y);
+    pearson_k2 = covariance_k2 / (standard_deviation_k2_x * standard_deviation_k2_y);
+
+    printf("pearson_k1 %f covariance_k1 %f standard_deviation_k1_x %f standard_deviation_k1_y %f\n", pearson_k1, covariance_k1, standard_deviation_k1_x, standard_deviation_k1_y);
+    printf("pearson_k2 %f covariance_k2 %f standard_deviation_k2_x %f standard_deviation_k2_y %f\n", pearson_k2, covariance_k2, standard_deviation_k2_x, standard_deviation_k2_y);
+
+    printf("center_x1 %f center_y1 %f center_x2 %f center_y2 %f \n\n", center_x1, center_y1, center_x2, center_y2);
+
+    //now update PI function
+    PI_k1 = N_k1 / (N_k1 + N_k2);
+    PI_k2 = N_k2 / (N_k1 + N_k2);
+
+  //1 means perfectly positive linear correlation and 1 means perfectly negative linear correlation
+  }while(pearson_k1 < 1 && pearson_k1 > -1 && pearson_k2 < 1 && pearson_k2 > -1);
 }
 
 int main(int argc, char **argv){
@@ -97,11 +253,16 @@ int main(int argc, char **argv){
   k_means();
 
   for(i = 0; i < 100; i++){
-    printf("%f %f %.0f\n", data[i][0], data[i][1], data[i][2]);
+    printf("%f %f %.0f %.0f\n", data[i][0], data[i][1], data[i][2], data[i][3]);
   }
 
   printf("k-mean center coordinates for group 1: %f %f\n", center_x1, center_y1);
   printf("k-mean center coordinates for group 2: %f %f\n", center_x2, center_y2);
+
+  em();
+
+  printf("EM center coordinates for group 1: %f %f\n", center_x1, center_y1);
+  printf("EM center coordinates for group 2: %f %f\n", center_x2, center_y2);
 
   return 0;
 }
