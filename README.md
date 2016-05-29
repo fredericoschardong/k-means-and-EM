@@ -1,4 +1,4 @@
-A simple implementation of k-means and EM algorithms running on a static dataset.
+A simple implementation of k-means and expectation–maximization (EM) algorithms running on a static dataset.
 
 You need to have gnuplot installed to check the output.
 
