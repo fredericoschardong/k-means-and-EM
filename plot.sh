@@ -38,14 +38,23 @@ set terminal png size 800,600;
 set output "k-means.png"
 
 labels="Group-1 Group-2"
+
 set xrange[-2:12] # must be set for '+'
 set samples words(labels)   # number of colors to use
 key_x = -1.5     # x-value of the points, must be given in units of the x-axis
 key_y = 7.5
 key_dy = 0.5
+
 set palette model RGB defined ( 0 'red', 1 'blue')
 unset colorbox
 unset key
-plot "<./main" u 1:2:3 w points pt 7 palette, \
+plot "<./main" every ::::100 u 1:2:3 w points pt 7 palette, \
+     '+' using (key_x):(key_y - $0*key_dy):(word(labels, int($0+1))):0 \
+         with labels left offset 1,-0.1 point pt 7 palette
+
+set title "EM" textcolor rgb text_color font my_font
+set output "em.png"
+set palette model RGB defined ( 0 'red', 1 'blue' )
+plot "<./main" every ::::100 u 1:2:4 with points palette notitle, \
      '+' using (key_x):(key_y - $0*key_dy):(word(labels, int($0+1))):0 \
          with labels left offset 1,-0.1 point pt 7 palette
