@@ -93,8 +93,6 @@ void k_means(){
 
 //https://en.wikipedia.org/wiki/Multivariate_normal_distribution#Density_function
 float pdf_for_bivariate_distribution(float x, float x_standard_deviation, float x_mean, float y, float y_standard_deviation, float y_mean, float pearson_product){
-
-
   return (1 / (2 * PI * x_standard_deviation * y_standard_deviation * sqrt(1 - pow(pearson_product, 2)))) *
          expf(-(1 / (float)(2 * (1 - pow(pearson_product, 2)))) *
               ((pow(x - x_mean, 2) / pow(x_standard_deviation, 2)) + (pow(y - y_mean, 2) / pow(y_standard_deviation, 2)) -
