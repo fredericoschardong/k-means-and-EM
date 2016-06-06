@@ -106,7 +106,7 @@ void em(){
   float Pr_k1[100] = {0}, Pr_k2[100] = {0};
   float total_center_x1 = 0, total_center_y1 = 0, total_center_x2 = 0, total_center_y2 = 0;
   float covariance_k1 = 0, covariance_k2 = 0;
-  float covariance_k1_change, covariance_k2_change;
+  float old_center_x1, old_center_y1, old_center_x2, old_center_y2;
 
   //generate things based on k-means
   for(i = 0; i < 100; i++){
@@ -160,7 +160,12 @@ void em(){
   PI_k2 = total_k2 / (float)(total_k1 + total_k2);
 
   do{
-    float N_k1 = 0, N_k2 = 0, old_covariance_k1 = covariance_k1, old_covariance_k2 = covariance_k2;
+    float N_k1 = 0, N_k2 = 0;
+
+    old_center_x1 = center_x1;
+    old_center_y1 = center_y1;
+    old_center_x2 = center_x2;
+    old_center_y2 = center_y2;
 
     //Step E
     for(i = 0; i < 100; i++){
@@ -210,10 +215,10 @@ void em(){
     covariance_k1 = covariance_k1 / N_k1;
     covariance_k2 = covariance_k2 / N_k2;
 
-    standard_deviation_k1_x = cond_prob_k1_x / N_k1;
-    standard_deviation_k1_y = cond_prob_k1_y / N_k1;
-    standard_deviation_k2_x = cond_prob_k2_x / N_k2;
-    standard_deviation_k2_y = cond_prob_k2_y / N_k2;
+    standard_deviation_k1_x = sqrt(cond_prob_k1_x / N_k1);
+    standard_deviation_k1_y = sqrt(cond_prob_k1_y / N_k1);
+    standard_deviation_k2_x = sqrt(cond_prob_k2_x / N_k2);
+    standard_deviation_k2_y = sqrt(cond_prob_k2_y / N_k2);
 
     pearson_k1 = covariance_k1 / (standard_deviation_k1_x * standard_deviation_k1_y);
     pearson_k2 = covariance_k2 / (standard_deviation_k2_x * standard_deviation_k2_y);
@@ -221,15 +226,13 @@ void em(){
     //now update PI function
     PI_k1 = N_k1 / (N_k1 + N_k2);
     PI_k2 = N_k2 / (N_k1 + N_k2);
-
-    covariance_k1_change = (100 * MIN(covariance_k1, old_covariance_k1)) / MAX(covariance_k1, old_covariance_k1);
-    covariance_k2_change = (100 * MIN(covariance_k2, old_covariance_k2)) / MAX(covariance_k2, old_covariance_k2);
-
-  //one may ask why 94%, the real answer is that more steps mess up the result. There is probably an issue somewhere in the code above.
-  }while(covariance_k1_change < 94 || covariance_k2_change < 94);
+  }while(fabs(center_x1 - old_center_x1) > 0 &&
+         fabs(center_y1 - old_center_y1) > 0 &&
+         fabs(center_x2 - old_center_x2) > 0 &&
+         fabs(center_y2 - old_center_y2) > 0);
 
   for(i = 0; i < 100; i++){
-    data[i][3] = Pr_k1[i];
+    data[i][3] = Pr_k1[i] > Pr_k2[i];
   }
 }
 
